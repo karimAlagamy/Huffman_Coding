@@ -7,7 +7,7 @@
 using namespace std;
 
 struct node {
-    char ch;
+    string ch;
     int freq;
     node *left;
     node *right;
@@ -19,7 +19,7 @@ struct compare {
     }
 };
 
-node* create_node(char c, int f) {
+node* create_node(string c, int f) {
     node *n = new node;
     n->ch = c;
     n->freq = f;
@@ -27,60 +27,104 @@ node* create_node(char c, int f) {
     return n;
 }
 
-void extract_data(const string& filename,
-                  priority_queue<node*, vector<node*>, compare>& min_heap,
-                  unordered_map<char, int>& freqMap) {
+// Extract data from file and build frequency map and min-heap
+void extract_data(const string& filename, priority_queue<node*, vector<node*>, compare>& min_heap) {
 
-    // Open the file
-    ifstream file("test.txt");
+    ifstream file(filename);
     if (!file.is_open()) {
         cerr << "Error opening file!" << endl;
         exit(1);
     }
 
+    unordered_map<char, int> freq_map;
     char ch;
 
-    // Read characters from the file one by one
     while (file.get(ch)) {
-        freqMap[ch]++;   
+        if(isgraph(ch))
+            freq_map[ch]++;
     }
-
-    // Close the file
     file.close();
 
-    for (const auto& pair : freqMap) 
-        min_heap.push(create_node(pair.first, pair.second));
+    for (const auto& pair : freq_map) {
+        min_heap.push(create_node(string(1, pair.first), pair.second));
+    }
+}
+
+node* merge_nodes(node* n1, node* n2) {
+    node* merged_node = create_node("INTERNAL", n1->freq + n2->freq);
+    merged_node->left = n1;
+    merged_node->right = n2;
+    return merged_node;
+}
+node* huffman_coding(priority_queue<node*, vector<node*>, compare>& min_heap) {
     
-}
+    node* internal_node = nullptr;
 
-
-
-void print_node(node *n) {
-    cout << n->ch << " : " << n->freq << endl;
-}
-void print_freq_map(unordered_map<char, int> freqMap) {
-    for (const auto& pair : freqMap) {
-        cout << pair.first << " : " << pair.second << endl;
-    }
-}
-void print_priority_queue(priority_queue<node*, vector<node*>, compare> min_heap) {
-    while (!min_heap.empty()) {
-        print_node(min_heap.top());
+    while (min_heap.size() > 1) {
+        node* n1 = min_heap.top();
         min_heap.pop();
+
+        node* n2 = min_heap.top();
+        min_heap.pop();
+
+        internal_node = merge_nodes(n1, n2);
+        min_heap.push(internal_node);
     }
+
+    // The final node is the root of the Huffman tree
+    return min_heap.top();
+}
+void get_codes(node* root, unordered_map<char, string>& codes, string code ) {
+
+    if (root == nullptr) return;
+
+    if (root->ch.size() == 1) {
+        codes[root->ch[0]] = code;  
+    }
+
+    get_codes(root->left, codes, code + "0");   
+    get_codes(root->right, codes, code + "1");  
+}
+
+void print_node(node* n) {
+    if (n->ch == "INTERNAL") {
+        cout << "  " << n->freq << endl;
+    }
+    else
+        cout << n->ch << " " << n->freq << endl;
+}
+void print_tree(node* root) {
+    if (root == nullptr) return;
+    print_tree(root->left);
+    print_node(root);
+    print_tree(root->right);
+}
+void print_codes(const unordered_map<char, string>& codes) {
+    for (const auto& pair : codes) {
+        cout << pair.first << " " << pair.second << endl;
+    }
+}
+void free_tree(node* root) {
+    if (root == nullptr) return;
+    free_tree(root->left);
+    free_tree(root->right);
+    delete root;
 }
 
 int main() {
-  
-    // Init the priority queue and frequency map
+    
     priority_queue<node*, vector<node*>, compare> min_heap;
-    unordered_map<char, int> freqMap;
+    unordered_map<char, string> codes_map;
 
-    // Extract data from the file into the priority queue and frequency map
-    extract_data("test.txt", min_heap, freqMap);
+    extract_data("test.txt", min_heap);
 
+    node* root = huffman_coding(min_heap);
+    // print_tree(root);
 
+    get_codes(root, codes_map, "");
+    print_codes(codes_map);
+
+    free_tree(root);  // Free allocated memory
 
     return 0;
 }
-
