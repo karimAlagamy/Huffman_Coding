@@ -1,3 +1,5 @@
 main.exe
-org_file.txt
+org.txt
 test.txt
+compressed.bin
+decompressed.txt
